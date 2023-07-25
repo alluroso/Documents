@@ -1,5 +1,5 @@
 //
-//  ViewController.swift
+//  FileViewController.swift
 //  Documents
 //
 //  Created by Алексей Калинин on 24.07.2023.
@@ -7,50 +7,36 @@
 
 import UIKit
 
-class ViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+class FileViewController: UITableViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     let path = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
     
+    var sort = true
+    
     var files: [String] {
         do {
-            return try FileManager.default.contentsOfDirectory(atPath: path)
+            if sort {
+                return try FileManager.default.contentsOfDirectory(atPath: path).sorted(by: >)
+            } else {
+                return try FileManager.default.contentsOfDirectory(atPath: path).sorted(by: <)
+            }
         } catch {
             print(error.localizedDescription)
             return []
         }
     }
     
-    let tableView: UITableView = {
-        let tableView = UITableView.init(frame: .zero, style: .grouped)
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "TableViewCell")
-        return tableView
-    }()
-    
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
-        navigationController?.navigationBar.prefersLargeTitles = true
+        sort = UserDefaults.standard.bool(forKey: "sortSettings")
         
         setupView()
-        constraints()
         barButtonItem()
     }
     
     func setupView() {
-        view.addSubview(tableView)
         title = NSString(string: path).lastPathComponent
-        tableView.dataSource = self
-        tableView.delegate = self
-    }
-    
-    func constraints() {
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
-        ])
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "TableViewCell")
     }
     
     func barButtonItem() {
@@ -78,11 +64,11 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         dismiss(animated: true, completion: nil)
     }
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return files.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TableViewCell", for: indexPath)
         
         cell.textLabel?.text = files[indexPath.row]
@@ -92,7 +78,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         return cell
     }
     
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             let pathForDelete = path + "/" + files[indexPath.row]
             try? FileManager.default.removeItem(atPath: pathForDelete)
@@ -108,5 +94,13 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     func getDocumentsDirectory() -> URL {
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         return paths[0]
+    }
+}
+
+extension FileViewController: SettingsViewControllerDelegate {
+    func sortTableView() {
+        sort.toggle()
+        tableView.reloadData()
+        UserDefaults.standard.set(sort, forKey: "sortSettings")
     }
 }
